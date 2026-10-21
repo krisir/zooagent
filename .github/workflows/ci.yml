@@ -27,7 +27,8 @@ jobs:
         working-directory: backend
     env:
       # 测试和评测都在临时工作空间里跑，别落到 runner 的家目录
-      ZOOAGENT_HOME: ${{ runner.temp }}/zooagent-home
+      # （job 级 env 里不能用 runner.* 上下文，只能用 github.*）
+      ZOOAGENT_HOME: ${{ github.workspace }}/.ci-home
     steps:
       - uses: actions/checkout@v7
 
