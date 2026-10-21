@@ -107,11 +107,15 @@ jobs:
         with:
           workspaces: apps/desktop/src-tauri -> target
 
-      # generate_context! 会去读 frontendDist，只要是存在的目录就行
-      - name: 造一个占位前端产物
+      # cargo check 只做编译，不跑壳：generate_context! 要求 frontendDist 存在，
+      # externalBin 要求同名 sidecar 存在。两个占位物就够，不必真打一份 46 MB 的包。
+      - name: 造占位产物（前端 + sidecar）
         run: |
-          mkdir -p apps/desktop/dist
+          mkdir -p apps/desktop/dist apps/desktop/src-tauri/binaries
           echo '<!doctype html><title>placeholder</title>' > apps/desktop/dist/index.html
+          triple=$(rustc -vV | awk '/^host:/ {print $2}')
+          printf '#!/bin/sh\n' > "apps/desktop/src-tauri/binaries/zooagent-backend-$triple"
+          chmod +x "apps/desktop/src-tauri/binaries/zooagent-backend-$triple"
 
       - name: cargo check
         working-directory: apps/desktop/src-tauri

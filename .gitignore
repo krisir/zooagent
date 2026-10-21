@@ -5,8 +5,9 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 *.egg-info/
-dist/
-build/
+# PyInstaller 的产物目录。必须写全路径：裸 build/ 会连 scripts/build/ 一起忽略掉
+/backend/dist/
+/backend/build/
 *.spec
 
 # Node
