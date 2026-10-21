@@ -1,0 +1,1232 @@
+/* ------------------------------------------------------------------
+   zooagent design system
+   Warm, editorial, "your business in a conversation" — see
+   prototypes/zooagent-redesign.html. Tokens mirror src/theme.ts.
+   ------------------------------------------------------------------ */
+
+:root {
+  --ink: #17261f;
+  --muted: #78847d;
+  --faint: #9aa49d;
+  --line: #e7ece8;
+  --paper: #fbfcf9;
+  --canvas: #edf1ea;
+  --green: #1f7556;
+  --green-deep: #173b2c;
+  --lime: #d5f36a;
+  --mint: #eef5ee;
+  --violet: #7865db;
+  --warm: #faf0e4;
+  --shadow: 0 18px 55px #25392d12;
+  --shadow-soft: 0 10px 30px #25392d0f;
+  --radius: 13px;
+  --dock-w: 380px;
+  --panel-gap: 12px;
+  /* One motion language for the data-page fold: a long, soft deceleration.
+     Layout properties (flex-grow) can't be composited, so a gentle curve and a
+     longer window do more for the feel than extra keyframes. */
+  --panel-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --panel-duration: 440ms;
+  --data-duration: 360ms;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family:
+    Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+/* ---------------------------------------------------------- shell */
+
+.app-shell {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  height: 100vh;
+  padding: 12px;
+  overflow: hidden;
+  background: var(--canvas);
+}
+
+/* the rail is a card floating on the canvas, not a full-height painted edge */
+.rail {
+  width: 240px;
+  flex: none;
+  height: 100%;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: var(--shadow-soft);
+  padding: 24px 14px 18px;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px 30px;
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -0.4px;
+}
+
+.logo {
+  width: 30px;
+  height: 30px;
+  background: var(--green);
+  color: var(--lime);
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  font-weight: 800;
+  transform: rotate(-5deg);
+}
+
+/* no workspace switcher: the rail is just "who can I talk to" */
+.nav.primary {
+  font-weight: 600;
+}
+
+.nav-split {
+  height: 1px;
+  background: var(--line);
+  margin: 10px 10px 6px;
+}
+
+.navlabel.with-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 6px;
+}
+
+.rail-list {
+  min-height: 0;
+}
+
+.rail-empty {
+  padding: 10px 12px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: #a6afa8;
+}
+
+.navlabel {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: #a6afa8;
+  padding: 8px 12px;
+  text-transform: uppercase;
+}
+
+.nav {
+  padding: 9px 11px;
+  border-radius: 9px;
+  color: #68746c;
+  margin: 2px 0;
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  text-align: left;
+  width: 100%;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+
+.nav:hover {
+  background: #f4f7f3;
+}
+
+.nav.active {
+  background: var(--mint);
+  color: var(--green);
+  font-weight: 700;
+}
+
+.nav i {
+  font-style: normal;
+  width: 18px;
+  text-align: center;
+  font-size: 16px;
+  flex: none;
+}
+
+.nav .nav-emoji {
+  width: 18px;
+  text-align: center;
+  flex: none;
+}
+
+.nav span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav .nav-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.rail-bottom {
+  margin-top: auto;
+  padding-top: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+/* settings only: no workspace / account identity in the rail */
+.rail-settings {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: #93a096;
+  border-radius: 10px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.rail-settings:hover {
+  background: #f1f5f0;
+  color: var(--green);
+}
+
+/* ---------------------------------------------------------- main */
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scroller {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.content {
+  max-width: 1200px;
+  margin: auto;
+  padding: 22px 20px 48px;
+}
+
+/* ---------------------------------------------------------- hello */
+
+.date {
+  font-size: 11px;
+  color: #929d95;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------- hero */
+
+.send {
+  height: 39px;
+  width: 40px;
+  flex: none;
+  border: 0;
+  border-radius: 9px;
+  background: var(--lime);
+  color: var(--green-deep);
+  font-size: 18px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+}
+
+.send:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.suggest {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.suggest button {
+  background: #ffffff12;
+  border: 1px solid #ffffff24;
+  color: #e2ede5;
+  border-radius: 20px;
+  padding: 6px 11px;
+  font-size: 11px;
+  transition: 0.15s;
+}
+
+.suggest button:hover {
+  background: #ffffff1f;
+  border-color: #ffffff38;
+}
+
+/* ---------------------------------------------------------- sections */
+
+/* ---------------------------------------------------------- app cards */
+
+.appemoji {
+  font-size: 20px;
+}
+
+.appcard:hover .card-actions,
+.card-actions:focus-within,
+/* ---------------------------------------------------------- app view */
+
+/* rail · assistant · data: three columns sharing one row of height */
+.appview {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: var(--panel-gap);
+  height: 100%;
+  min-height: 0;
+}
+
+/* the assistant is the permanent left column */
+.assistant-dock {
+  flex: 0 0 var(--dock-w);
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  box-shadow: var(--shadow-soft);
+  background: #fff;
+  overflow: hidden;
+  /* Isolate the chat's internal reflow: the width transition still rewraps
+     text, but it no longer forces the rail and data card to re-layout too. */
+  contain: layout;
+  /* the only property that changes: it grows into the space the data card frees */
+  transition: flex-grow var(--panel-duration) var(--panel-ease);
+}
+
+/* nothing but the assistant: it takes the whole row */
+.appview.data-hidden .assistant-dock {
+  flex-grow: 1;
+}
+
+/* Showing: the panel is docked in place and fades in while the assistant
+   narrows to its docked width underneath it. */
+.appview.entering .assistant-dock {
+  animation: dock-show var(--panel-duration) var(--panel-ease) forwards;
+}
+
+/* the data page is a card too, not paint on the canvas */
+.appview-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 22px 24px 26px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: var(--shadow-soft);
+  contain: layout;
+  transform-origin: 50% 50%;
+  animation: panel-in var(--panel-duration) var(--panel-ease) both;
+}
+
+/* On hide the card leaves the flow and fades over the widening assistant, so
+   the two motions overlap instead of waiting for each other. On show it spends
+   the whole transition in the same overlay spot, then settles into the flex row
+   once the assistant has finished narrowing - the geometry is identical at that
+   swap, so nothing jumps. */
+.appview-main.leaving,
+.appview-main.entering {
+  position: absolute;
+  inset: 0 0 0 calc(var(--dock-w) + var(--panel-gap));
+  will-change: transform, opacity;
+}
+
+.appview-main.leaving,
+.appview-main.entering {
+  pointer-events: none;
+}
+
+.appview-main.leaving {
+  animation: panel-out var(--data-duration) var(--panel-ease) forwards;
+}
+
+/* the card trails the assistant by a beat: the row starts narrowing first */
+.appview-main.entering {
+  animation: panel-in var(--panel-duration) var(--panel-ease) 40ms both;
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(26px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes dock-show {
+  from {
+    flex-basis: 100%;
+    flex-grow: 0;
+  }
+  to {
+    flex-basis: var(--dock-w);
+    flex-grow: 0;
+  }
+}
+
+@keyframes panel-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(26px) scale(0.985);
+  }
+}
+
+/* the app page's own cards live on the white panel: keep them shallow */
+.content .appview .ant-card {
+  border-color: var(--line);
+}
+
+
+/* the app view is a full-bleed shell: its cards line up with the rail */
+.content.app-content {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+@media (max-width: 1080px) {
+  /* stacked cards scroll with the page instead of scrolling internally */
+  .content.app-content {
+    padding: 12px;
+    height: auto;
+  }
+
+  .appview {
+    flex: none;
+    flex-direction: column;
+    align-items: stretch;
+    height: auto;
+  }
+
+  .appview-main {
+    flex: none;
+    overflow: visible;
+  }
+
+  .appview .assistant-dock,
+  .appview.data-hidden .assistant-dock {
+    flex: none;
+    width: 100%;
+    height: 60vh;
+    transition: none;
+  }
+
+  /* flex-basis is the block axis here: the dock-show slide would animate height */
+  .appview.entering .assistant-dock {
+    animation: none;
+  }
+
+  /* stacked layout: no absolute overlay to animate over */
+  .appview-main.leaving,
+  .appview-main.entering {
+    position: static;
+    inset: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-dock {
+    transition: none;
+  }
+
+  .appview-main,
+  .appview-main.leaving,
+  .appview-main.entering,
+  .appview.entering .assistant-dock {
+    animation: none;
+  }
+
+  /* no fade to watch: drop the leaving card immediately instead of showing a
+     static ghost until the unmount timer fires */
+  .appview-main.leaving {
+    opacity: 0;
+  }
+}
+
+.appview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.appview-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.appview-title h1 {
+  font-size: 22px;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.appview-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ------------------------------------------------- primary data page: 助手目录 */
+
+.roster-table {
+  margin-top: 10px;
+}
+
+.roster-table .ant-table-row {
+  cursor: pointer;
+}
+
+.roster-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.roster-emoji {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.roster-text {
+  min-width: 0;
+}
+
+.roster-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.roster-desc {
+  max-width: 460px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.roster-time {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.appview .ant-tabs-nav {
+  margin-bottom: 18px;
+}
+
+.appview .ant-tabs-tab {
+  font-size: 13px;
+}
+
+.render-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+/* ---------------------------------------------------------- thread & bubbles */
+
+.thread-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.thread-row.user {
+  flex-direction: row-reverse;
+}
+
+.bubble {
+  max-width: 86%;
+  background: #f4f7f3;
+  border-radius: 14px;
+  padding: 9px 13px;
+  font-size: 12.5px;
+  word-break: break-word;
+}
+
+.thread-row.user .bubble {
+  background: #e4efe6;
+}
+
+/* ---------------------------------------------------------- markdown */
+
+.md {
+  line-height: 1.62;
+}
+
+.md > *:first-child {
+  margin-top: 0;
+}
+
+.md > *:last-child {
+  margin-bottom: 0;
+}
+
+.md-paragraph {
+  margin: 0 0 8px;
+}
+
+.md-heading {
+  margin: 12px 0 6px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+h5.md-heading {
+  font-size: 13px;
+}
+
+h6.md-heading {
+  font-size: 12.5px;
+}
+
+.md-list {
+  margin: 0 0 8px;
+  padding-left: 18px;
+}
+
+.md-list li {
+  margin: 2px 0;
+}
+
+.md-list li::marker {
+  color: #8fa596;
+}
+
+.md-code {
+  background: #e6eee6;
+  border-radius: 5px;
+  padding: 1px 5px;
+  font-size: 11.5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.md-pre {
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #17261f;
+  color: #dcecdf;
+  font-size: 11.5px;
+  overflow-x: auto;
+}
+
+.md-pre code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.md-quote {
+  margin: 0 0 8px;
+  padding: 2px 0 2px 10px;
+  border-left: 2px solid #cfdfd2;
+  color: #5d6b62;
+}
+
+.md-rule {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 10px 0;
+}
+
+.md a {
+  color: var(--green);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.bubble-text {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.tool-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.tool-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: #f1f5f1;
+  color: #4b5a52;
+}
+
+/* a new tool call animates in, replacing the previous pill */
+.tool-chip.live {
+  animation: chip-in 0.18s ease;
+}
+
+@keyframes chip-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.tool-chip.ok {
+  color: #2f7a57;
+  background: #e7f3eb;
+}
+
+.tool-chip.fail {
+  color: #b04a3a;
+  background: #fbeee9;
+}
+
+.tool-chip.pending {
+  color: #8a7a2f;
+  background: #f7f1de;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* ------------------------------------------------ assistant-to-assistant
+   Two helpers talking is process, not conversation: a one-line card that
+   stays out of the way until the user wants the details. */
+.agent-msg {
+  align-self: flex-start;
+  /* overflow:hidden boxes lose their automatic min-height inside a column
+     flex parent, so opt out of shrinking explicitly */
+  flex: none;
+  max-width: 100%;
+  min-width: 200px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fafbf8;
+  overflow: hidden;
+}
+
+.agent-msg-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 7px 11px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-size: 11.5px;
+  color: var(--muted);
+  text-align: left;
+}
+
+.agent-msg-head:hover {
+  background: #f2f5f0;
+}
+
+.agent-msg-title {
+  color: #4b5a52;
+}
+
+/* 卡片更像一个入口：右侧给一句「打开对话」 */
+.agent-msg-go {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  color: var(--faint);
+  transition: color 0.16s ease;
+}
+
+.agent-msg-head:hover .agent-msg-go {
+  color: var(--green);
+}
+
+.agent-msg-chev {
+  margin-left: auto;
+  font-size: 9px;
+  transition: transform 0.18s var(--panel-ease);
+}
+
+.agent-msg-head[aria-expanded="true"] /* 卡片更像一个入口：右侧给一句「打开对话」 */
+.agent-msg-go {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  color: var(--faint);
+  transition: color 0.16s ease;
+}
+
+.agent-msg-head:hover .agent-msg-go {
+  color: var(--green);
+}
+
+.agent-msg-chev {
+  transform: rotate(180deg);
+}
+
+.agent-msg-body {
+  display: grid;
+  gap: 3px;
+  padding: 2px 11px 10px;
+  animation: chip-in 0.18s ease;
+}
+
+.agent-msg-label {
+  font-size: 10px;
+  color: var(--faint);
+  margin-top: 4px;
+}
+
+.agent-msg-text {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #33443b;
+  white-space: pre-wrap;
+  max-height: 240px;
+  overflow: auto;
+}
+
+/* ---------------------------------------------------------- chat panel */
+
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 18px;
+  background: #fff;
+}
+
+.chat-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chat-mark {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 10px;
+  background: var(--green);
+  color: var(--lime);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+}
+
+.chat-title {
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-subtitle {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.chat-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  /* keep the gutter reserved so the scrollbar appearing mid-animation does not
+     shift the conversation sideways */
+  scrollbar-gutter: stable;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--paper);
+}
+
+.chat-greeting {
+  background: #f4f7f3;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #4b5a52;
+  white-space: pre-wrap;
+}
+
+.chat-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.chat-suggest button {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: #4b5a52;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.chat-suggest button:hover {
+  border-color: #cfdbd2;
+  color: var(--green);
+}
+
+.chat-input {
+  display: flex;
+  align-items: flex-end;
+  padding: 12px 14px 14px;
+  background: #fff;
+}
+
+/* 输入框自带两行高度，发送按钮落在框内右下角 */
+.chat-composer {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+.chat-composer textarea.ant-input {
+  /* 右侧留出按钮的位置，文字不会钻到按钮底下 */
+  padding: 9px 50px 9px 12px;
+  border-radius: 12px;
+  line-height: 1.55;
+  resize: none;
+}
+
+.chat-send.ant-btn {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  padding: 0;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+}
+
+/* 处理中：这颗按钮变成"停止"，悬停时才露出中止的语义色 */
+.chat-send.ant-btn.stopping {
+  color: var(--muted);
+}
+
+.chat-send.ant-btn.stopping:hover {
+  color: #c0453a;
+  border-color: #e6bcb6;
+}
+
+/* ---------------------------------------------------------- co-creation */
+
+.step {
+  flex: 1;
+}
+
+.step.active .stepbar,
+.step.done .stepbar {
+  background: #5d9c76;
+}
+
+.step small {
+  color: #96a098;
+  font-size: 10px;
+}
+
+.step.active small {
+  color: var(--green);
+  font-weight: 700;
+}
+
+.next {
+  border: 0;
+  border-radius: 9px;
+  padding: 10px 17px;
+  background: var(--green);
+  color: #fff;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.next:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.choice:hover,
+/* ---------------------------------------------------------- toast */
+
+/* ---------------------------------------------------------- antd touch-ups */
+
+.ant-message-notice-content {
+  background: var(--green-deep) !important;
+  color: #fff !important;
+  border-radius: 10px !important;
+  box-shadow: 0 14px 40px #081d1666 !important;
+}
+
+.ant-message-notice-content .anticon {
+  color: var(--lime) !important;
+}
+
+.content .ant-card {
+  box-shadow: none;
+}
+
+.ant-tag {
+  border-radius: 20px;
+}
+
+.ant-empty-description {
+  color: var(--muted);
+}
+
+/* ---------------------------------------------------------- misc */
+
+.centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+}
+
+.calendar-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+  font-size: 12px;
+}
+
+.calendar-dot {
+  background: var(--green);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 10px;
+  padding: 0 4px;
+  line-height: 14px;
+}
+
+.muted {
+  color: var(--faint);
+}
+
+/* ---------------------------------------------------------- responsive */
+
+@media (max-width: 1080px) {
+  .rail {
+    width: 74px;
+    padding: 20px 9px;
+  }
+
+  .brand {
+    padding: 0 12px 26px;
+    justify-content: center;
+  }
+
+  .brand .brand-text,
+  .navlabel,
+  .nav span,
+  .nav .nav-count {
+    display: none;
+  }
+
+  .nav {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .content {
+    padding: 14px 10px 32px;
+  }
+
+}
+
+/* ---------------------------------------------------------- settings: model list */
+
+.profile-list {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.profile-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  background: #fff;
+  transition: background 0.15s;
+}
+
+.profile-row + .profile-row {
+  border-top: 1px solid var(--line);
+}
+
+.profile-row:hover {
+  background: #f7faf6;
+}
+
+.profile-row.active {
+  background: var(--mint);
+}
+
+.profile-row.editing {
+  box-shadow: inset 3px 0 0 var(--green);
+}
+
+/* The "add" row lives inside the list so it reads as one more, empty slot. */
+.profile-row.add {
+  color: var(--green);
+}
+
+.profile-row.add .profile-name {
+  color: var(--green);
+  gap: 6px;
+}
+
+.profile-row.add .profile-meta {
+  color: var(--muted);
+}
+
+.profile-row.add.current {
+  background: var(--mint);
+  box-shadow: inset 3px 0 0 var(--green);
+}
+
+.profile-main {
+  min-width: 0;
+}
+
+.profile-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--green);
+  background: #dff0e3;
+  border-radius: 20px;
+  padding: 1px 8px;
+}
+
+.profile-meta {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

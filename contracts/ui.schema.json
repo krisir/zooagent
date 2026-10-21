@@ -1,0 +1,285 @@
+{
+  "$defs": {
+    "UIActionRef": {
+      "additionalProperties": true,
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "kind": {
+          "default": "create",
+          "enum": [
+            "create",
+            "edit",
+            "delete",
+            "run_action",
+            "open_page",
+            "chat"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "action": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Action"
+        },
+        "page": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Page"
+        },
+        "prompt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "title": "UIActionRef",
+      "type": "object"
+    },
+    "UIComponent": {
+      "additionalProperties": false,
+      "description": "A component instance. Unknown keys are allowed in ``props`` only.",
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "type": {
+          "enum": [
+            "Heading",
+            "Text",
+            "Divider",
+            "DataTable",
+            "Form",
+            "DetailView",
+            "StatCard",
+            "Chart",
+            "Calendar",
+            "Tabs",
+            "ActionButton",
+            "FilterPanel",
+            "ChatPanel"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "fields": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fields"
+        },
+        "columns": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Columns"
+        },
+        "actions": {
+          "items": {
+            "$ref": "#/$defs/UIActionRef"
+          },
+          "title": "Actions",
+          "type": "array"
+        },
+        "props": {
+          "additionalProperties": true,
+          "title": "Props",
+          "type": "object"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "UIComponent",
+      "type": "object"
+    },
+    "UIPage": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "icon": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Icon"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "layout": {
+          "default": "vertical",
+          "enum": [
+            "vertical",
+            "grid",
+            "two_column"
+          ],
+          "title": "Layout",
+          "type": "string"
+        },
+        "components": {
+          "items": {
+            "$ref": "#/$defs/UIComponent"
+          },
+          "title": "Components",
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "title"
+      ],
+      "title": "UIPage",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "pages": {
+      "items": {
+        "$ref": "#/$defs/UIPage"
+      },
+      "title": "Pages",
+      "type": "array"
+    },
+    "home_page": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Home Page"
+    }
+  },
+  "title": "zooagent ui",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

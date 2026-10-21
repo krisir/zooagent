@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Minimal capability: the window only needs core defaults (it talks to the local backend over HTTP).",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

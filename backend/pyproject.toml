@@ -1,0 +1,54 @@
+[project]
+name = "zooagent"
+version = "0.1.0"
+description = "zooagent backend - local-first AI application platform"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.34,<1",
+  "pydantic>=2.9,<3",
+  "httpx>=0.28,<1",
+]
+
+[project.optional-dependencies]
+packaging = [
+  "pyinstaller>=6.11,<7",
+]
+agentscope = [
+    "agentscope>=2.0.10",
+]
+
+# Dev tooling lives in uv's native dev group so that `uv sync` (with or without
+# extras) never removes pytest/ruff from the environment.
+[dependency-groups]
+dev = [
+  "pytest>=8.3,<9",
+  "pytest-asyncio>=0.24,<1",
+  "ruff>=0.8,<1",
+]
+
+[project.scripts]
+zooagent = "zooagent.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/zooagent"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["B008"]  # FastAPI's Depends()/Body() are intentionally call-in-default
+
+[tool.uv]
+package = true

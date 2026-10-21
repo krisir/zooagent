@@ -1,0 +1,156 @@
+{
+  "$defs": {
+    "Aggregation": {
+      "properties": {
+        "function": {
+          "enum": [
+            "count",
+            "sum",
+            "avg",
+            "min",
+            "max"
+          ],
+          "title": "Function",
+          "type": "string"
+        },
+        "field": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Field"
+        },
+        "alias": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alias"
+        }
+      },
+      "required": [
+        "function"
+      ],
+      "title": "Aggregation",
+      "type": "object"
+    },
+    "Filter": {
+      "properties": {
+        "field": {
+          "title": "Field",
+          "type": "string"
+        },
+        "operator": {
+          "default": "eq",
+          "enum": [
+            "eq",
+            "ne",
+            "gt",
+            "gte",
+            "lt",
+            "lte",
+            "contains",
+            "startswith",
+            "endswith",
+            "in",
+            "between",
+            "is_null",
+            "not_null"
+          ],
+          "title": "Operator",
+          "type": "string"
+        },
+        "value": {
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "field"
+      ],
+      "title": "Filter",
+      "type": "object"
+    },
+    "SortSpec": {
+      "properties": {
+        "field": {
+          "title": "Field",
+          "type": "string"
+        },
+        "direction": {
+          "default": "asc",
+          "enum": [
+            "asc",
+            "desc"
+          ],
+          "title": "Direction",
+          "type": "string"
+        }
+      },
+      "required": [
+        "field"
+      ],
+      "title": "SortSpec",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "filters": {
+      "items": {
+        "$ref": "#/$defs/Filter"
+      },
+      "title": "Filters",
+      "type": "array"
+    },
+    "filter_logic": {
+      "default": "and",
+      "enum": [
+        "and",
+        "or"
+      ],
+      "title": "Filter Logic",
+      "type": "string"
+    },
+    "group_by": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Group By",
+      "type": "array"
+    },
+    "aggregations": {
+      "items": {
+        "$ref": "#/$defs/Aggregation"
+      },
+      "title": "Aggregations",
+      "type": "array"
+    },
+    "sort": {
+      "items": {
+        "$ref": "#/$defs/SortSpec"
+      },
+      "title": "Sort",
+      "type": "array"
+    },
+    "limit": {
+      "default": 500,
+      "maximum": 5000,
+      "minimum": 1,
+      "title": "Limit",
+      "type": "integer"
+    }
+  },
+  "title": "zooagent aggregate",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

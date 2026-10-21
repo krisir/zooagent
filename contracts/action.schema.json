@@ -1,0 +1,397 @@
+{
+  "$defs": {
+    "ActionStep": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "type": {
+          "enum": [
+            "query",
+            "aggregate",
+            "create",
+            "update",
+            "delete",
+            "compute",
+            "return"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "filters": {
+          "items": {
+            "$ref": "#/$defs/StepFilter"
+          },
+          "title": "Filters",
+          "type": "array"
+        },
+        "filter_logic": {
+          "default": "and",
+          "enum": [
+            "and",
+            "or"
+          ],
+          "title": "Filter Logic",
+          "type": "string"
+        },
+        "sort": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Sort",
+          "type": "array"
+        },
+        "limit": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Limit"
+        },
+        "group_by": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Group By",
+          "type": "array"
+        },
+        "aggregations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Aggregations",
+          "type": "array"
+        },
+        "values": {
+          "additionalProperties": true,
+          "title": "Values",
+          "type": "object"
+        },
+        "record_id": {
+          "default": null,
+          "title": "Record Id"
+        },
+        "expected_revision": {
+          "default": null,
+          "title": "Expected Revision"
+        },
+        "expression": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expression"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "output": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "ActionStep",
+      "type": "object"
+    },
+    "FieldDef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "text",
+            "integer",
+            "decimal",
+            "boolean",
+            "date",
+            "datetime",
+            "enum",
+            "relation",
+            "json"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "unique": {
+          "default": false,
+          "title": "Unique",
+          "type": "boolean"
+        },
+        "hidden": {
+          "default": false,
+          "title": "Hidden",
+          "type": "boolean"
+        },
+        "default": {
+          "default": null,
+          "title": "Default"
+        },
+        "options": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Options"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scale"
+        },
+        "target_model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Model"
+        },
+        "multiple": {
+          "default": false,
+          "title": "Multiple",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "key",
+        "name",
+        "type"
+      ],
+      "title": "FieldDef",
+      "type": "object"
+    },
+    "StepFilter": {
+      "additionalProperties": false,
+      "description": "A filter whose value may be a literal, ``{\"ref\": ...}`` or ``{\"expr\": ...}``.",
+      "properties": {
+        "field": {
+          "title": "Field",
+          "type": "string"
+        },
+        "operator": {
+          "default": "eq",
+          "title": "Operator",
+          "type": "string"
+        },
+        "value": {
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "field"
+      ],
+      "title": "StepFilter",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Id"
+    },
+    "key": {
+      "title": "Key",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "version": {
+      "default": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "status": {
+      "default": "active",
+      "title": "Status",
+      "type": "string"
+    },
+    "read_only": {
+      "default": false,
+      "title": "Read Only",
+      "type": "boolean"
+    },
+    "inputs": {
+      "items": {
+        "$ref": "#/$defs/FieldDef"
+      },
+      "title": "Inputs",
+      "type": "array"
+    },
+    "steps": {
+      "items": {
+        "$ref": "#/$defs/ActionStep"
+      },
+      "title": "Steps",
+      "type": "array"
+    },
+    "output": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Output"
+    }
+  },
+  "required": [
+    "key",
+    "name"
+  ],
+  "title": "zooagent action",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

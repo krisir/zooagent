@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "zooagent",
+  "version": "0.1.0",
+  "identifier": "com.zooagent.desktop",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app"],
+    "category": "Productivity",
+    "shortDescription": "用 AI 创建你自己的业务应用",
+    "longDescription": "zooagent 是一个本地优先的个人 AI 应用平台。通过主助手用自然语言创建数据模型、业务操作和界面，数据全部保存在本机。",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "externalBin": ["binaries/zooagent-backend"],
+    "macOS": {
+      "minimumSystemVersion": "12.0"
+    }
+  }
+}
