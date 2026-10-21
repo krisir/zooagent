@@ -241,6 +241,8 @@ cd apps/desktop && pnpm build      # tsc --noEmit + vite build
 cd apps/desktop/src-tauri && cargo check
 ```
 
+改了 `.github/workflows/` 之后建议本地先跑一遍 `actionlint`（`brew install actionlint`）：workflow 文件写法有问题时 GitHub 只会在推送后给一个 0 秒的失败，错误信息藏在 Actions 页面里。
+
 CI（[.github/workflows/ci.yml](.github/workflows/ci.yml)）在每次推送和 PR 上跑同一套：后端 job（ruff / pytest / 契约校验 / 评测，带 AgentScope）、前端 job（tsc + vite build）、桌面壳 job（cargo check）。安装包由 [.github/workflows/desktop.yml](.github/workflows/desktop.yml) 在 macOS 与 Windows 两个 runner 上原生构建——打 `v*` tag 时会自动创建 Release 并附上产物，也可以在 Actions 页面手动触发。
 
 ## 当前范围与后续
