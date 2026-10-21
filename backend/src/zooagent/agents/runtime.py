@@ -119,15 +119,70 @@ class AgentRuntime:
         }
 
 
+#: Tool results are replayed to the model on the next turn, so they have to stay
+#: inside a sane token budget *and* remain valid JSON - truncating the serialized
+#: text would hand the model a broken envelope it cannot parse.
+MAX_TOOL_RESULT_CHARS = 20_000
+
+TRUNCATION_NOTE = (
+    "工具结果过大，已截断。请缩小范围（更小的 limit/offset、更精确的 filters、"
+    "或改用 aggregate 聚合）后再试。"
+)
+
+
+def _dumps(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, default=str)
+
+
+def _shrink(value: Any, budget: int) -> Any:
+    """Return a JSON-safe value of about ``budget`` characters."""
+    if isinstance(value, dict) and isinstance(value.get("items"), list):
+        items = value["items"]
+        keep = len(items)
+        while keep > 0:
+            candidate = {**value, "items": items[:keep], "truncated": True}
+            if len(_dumps(candidate)) <= budget:
+                return candidate
+            keep //= 2
+        return {
+            **{key: item for key, item in value.items() if key != "items"},
+            "items": [],
+            "truncated": True,
+        }
+    try:
+        text = _dumps(value)
+    except (TypeError, ValueError):  # pragma: no cover - defensive
+        return str(value)
+    if len(text) <= budget:
+        return value
+    return {"truncated": True, "preview": text[: max(budget, 200)]}
+
+
 def _serialize_result(result: dict[str, Any]) -> str:
     """Send the whole envelope (``ok`` plus payload) back to the model so it can
-    tell success from failure and recover from validation errors."""
+    tell success from failure and recover from validation errors.
+
+    An oversized result is shrunk *before* serialisation: the model must always
+    receive parseable JSON, so it is told the payload was truncated instead of
+    getting a half-written object.
+    """
     try:
-        text = json.dumps(result, ensure_ascii=False, default=str)
+        text = _dumps(result)
     except (TypeError, ValueError):  # pragma: no cover - defensive
-        text = json.dumps({"ok": result.get("ok", False), "result": str(result)})
-    # Keep tool results inside a sane token budget.
-    return text[:20_000]
+        return _dumps({"ok": result.get("ok", False), "result": str(result)})
+    if len(text) <= MAX_TOOL_RESULT_CHARS:
+        return text
+
+    shrunk: dict[str, Any] = {
+        key: value for key, value in result.items() if key != "result"
+    }
+    shrunk["result"] = _shrink(result.get("result"), MAX_TOOL_RESULT_CHARS // 2)
+    shrunk["truncated"] = True
+    shrunk["note"] = TRUNCATION_NOTE
+    text = _dumps(shrunk)
+    if len(text) <= MAX_TOOL_RESULT_CHARS:
+        return text
+    return _dumps({"ok": result.get("ok", False), "truncated": True, "note": TRUNCATION_NOTE})
 
 
 def to_history_messages(rows: list[dict[str, Any]], limit: int = 20) -> list[ChatMessage]:

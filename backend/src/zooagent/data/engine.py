@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Iterator
 from typing import Any
 
 from ..errors import ConflictError, NotFoundError, ValidationFailure
@@ -20,6 +21,7 @@ from ..models.validation import coerce_record_values, normalize_unique_value
 from ..persistence import atomic
 from .query import (
     AggregateSpec,
+    Aggregation,
     QuerySpec,
     build_aggregation,
     build_order_by,
@@ -28,6 +30,15 @@ from .query import (
     group_expr,
     title_of,
 )
+
+#: SQLite caps how many parameters one statement may bind, and a multi-select
+#: relation can legitimately hold hundreds of ids, so lookups are chunked.
+SQL_PARAM_CHUNK = 900
+
+
+def _chunks(values: list[str], size: int = SQL_PARAM_CHUNK) -> Iterator[list[str]]:
+    for start in range(0, len(values), size):
+        yield values[start : start + size]
 
 
 class DataEngine:
@@ -53,7 +64,9 @@ class DataEngine:
         row = conn.execute(sql, params).fetchone()
         if row is None:
             raise NotFoundError(f"记录 '{record_id}' 不存在")
-        return self._serialize(conn, model, row, expand=expand)
+        data = json.loads(row["data_json"])
+        labels = self._relation_labels(conn, model, [data])[0] if expand else None
+        return self._serialize(model, row, data, labels=labels)
 
     def query_records(
         self, conn: sqlite3.Connection, model: ModelDef, spec: QuerySpec
@@ -75,22 +88,38 @@ class DataEngine:
         ).fetchall()
 
         return {
-            "items": [
-                self._serialize(conn, model, row, expand=spec.expand) for row in rows
-            ],
+            "items": self._serialize_rows(conn, model, rows, expand=spec.expand),
             "total": total,
             "limit": spec.limit,
             "offset": spec.offset,
             "model": model.key,
         }
 
+    def _serialize_rows(
+        self,
+        conn: sqlite3.Connection,
+        model: ModelDef,
+        rows: list[sqlite3.Row],
+        *,
+        expand: bool,
+    ) -> list[dict[str, Any]]:
+        """Serialize a page of rows with one label query per relation field.
+
+        Doing this per row instead would re-parse the target model and re-query
+        its titles for every single record (a 300-row page cost >1000 statements).
+        """
+        datas = [json.loads(row["data_json"]) for row in rows]
+        labels = self._relation_labels(conn, model, datas) if expand else [None] * len(datas)
+        return [
+            self._serialize(model, row, data, labels=label)
+            for row, data, label in zip(rows, datas, labels, strict=True)
+        ]
+
     def aggregate(
         self, conn: sqlite3.Connection, model: ModelDef, spec: AggregateSpec
     ) -> dict[str, Any]:
         aggregations = spec.aggregations or []
         if not aggregations:
-            from .query import Aggregation
-
             aggregations = [Aggregation(function="count")]
 
         select_parts: list[str] = []
@@ -245,16 +274,21 @@ class DataEngine:
         ).fetchone()
         if row is None:
             raise NotFoundError(f"记录 '{record_id}' 不存在")
+        if not hard and row["deleted_at"] is not None:
+            # Deleting twice would append a second "deleted" history row and bump
+            # the revision for no reason; report it exactly like a missing record.
+            raise NotFoundError(f"记录 '{record_id}' 不存在")
 
         data = json.loads(row["data_json"])
         revision = row["revision"] + 1
+        now = utc_now()
         with atomic(conn):
             if hard:
                 conn.execute("DELETE FROM records WHERE id = ?", (record_id,))
             else:
                 conn.execute(
                     "UPDATE records SET deleted_at = ?, revision = ?, updated_at = ? WHERE id = ?",
-                    (utc_now(), revision, utc_now(), record_id),
+                    (now, revision, now, record_id),
                 )
             conn.execute("DELETE FROM record_relations WHERE from_record = ?", (record_id,))
             conn.execute("DELETE FROM record_unique_keys WHERE record_id = ?", (record_id,))
@@ -269,6 +303,9 @@ class DataEngine:
         ).fetchone()
         if row is None:
             raise NotFoundError(f"记录 '{record_id}' 不存在")
+        if row["deleted_at"] is None:
+            # Already active: restoring is a no-op instead of a spurious revision.
+            return self.get_record(conn, model, record_id)
         data = json.loads(row["data_json"])
         revision = row["revision"] + 1
         with atomic(conn):
@@ -286,13 +323,12 @@ class DataEngine:
     # ------------------------------------------------------------------
     def _serialize(
         self,
-        conn: sqlite3.Connection,
         model: ModelDef,
         row: sqlite3.Row,
+        data: dict[str, Any],
         *,
-        expand: bool,
+        labels: dict[str, Any] | None,
     ) -> dict[str, Any]:
-        data = json.loads(row["data_json"])
         record: dict[str, Any] = {
             "id": row["id"],
             "model": model.key,
@@ -304,42 +340,70 @@ class DataEngine:
             "deleted_at": row["deleted_at"],
             "title": title_of(model, data, row["id"]),
         }
-        if expand:
-            labels = self._relation_labels(conn, model, data)
-            if labels:
-                record["labels"] = labels
+        if labels:
+            record["labels"] = labels
         return record
 
+    def _target_model(
+        self,
+        conn: sqlite3.Connection,
+        key: str | None,
+        cache: dict[str, ModelDef | None],
+    ) -> ModelDef | None:
+        """Resolve a related model once per operation (one JOIN + parse each time)."""
+        if not key:
+            return None
+        if key not in cache:
+            cache[key] = self.models.get_model_optional(conn, key)
+        return cache[key]
+
     def _relation_labels(
-        self, conn: sqlite3.Connection, model: ModelDef, data: dict[str, Any]
-    ) -> dict[str, Any]:
-        labels: dict[str, Any] = {}
+        self,
+        conn: sqlite3.Connection,
+        model: ModelDef,
+        datas: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Human-readable titles for the relation fields of a batch of records."""
+        results: list[dict[str, Any]] = [{} for _ in datas]
+        cache: dict[str, ModelDef | None] = {}
         for field in model.relation_fields():
             if field.target_model is None:
                 continue
-            value = data.get(field.key)
-            if value in (None, "", []):
-                continue
-            target = self.models.get_model_optional(conn, field.target_model)
+            target = self._target_model(conn, field.target_model, cache)
             if target is None:
                 continue
-            is_list = isinstance(value, list)
-            ids = [str(item) for item in value] if is_list else [str(value)]
-            if not ids:
+            per_row: list[tuple[int, list[str], bool]] = []
+            target_ids: set[str] = set()
+            for index, data in enumerate(datas):
+                value = data.get(field.key)
+                if value in (None, "", []):
+                    continue
+                is_list = isinstance(value, list)
+                ids = [str(item) for item in value] if is_list else [str(value)]
+                if not ids:
+                    continue
+                per_row.append((index, ids, is_list))
+                target_ids.update(ids)
+            if not target_ids:
                 continue
-            placeholders = ", ".join("?" for _ in ids)
-            rows = conn.execute(
-                "SELECT id, data_json, deleted_at FROM records "
-                f"WHERE model_id = ? AND id IN ({placeholders})",
-                [target.id, *ids],
-            ).fetchall()
-            mapping = {}
-            for row in rows:
-                title = title_of(target, json.loads(row["data_json"]), row["id"])
-                mapping[row["id"]] = title if row["deleted_at"] is None else f"{title}（已删除）"
-            resolved = [mapping.get(item, "(已删除)") for item in ids]
-            labels[field.key] = resolved if is_list else resolved[0]
-        return labels
+
+            mapping: dict[str, str] = {}
+            for chunk in _chunks(sorted(target_ids)):
+                placeholders = ", ".join("?" for _ in chunk)
+                rows = conn.execute(
+                    "SELECT id, data_json, deleted_at FROM records "
+                    f"WHERE model_id = ? AND id IN ({placeholders})",
+                    [target.id, *chunk],
+                ).fetchall()
+                for row in rows:
+                    title = title_of(target, json.loads(row["data_json"]), row["id"])
+                    mapping[row["id"]] = (
+                        title if row["deleted_at"] is None else f"{title}（已删除）"
+                    )
+            for index, ids, is_list in per_row:
+                resolved = [mapping.get(item, "(已删除)") for item in ids]
+                results[index][field.key] = resolved if is_list else resolved[0]
+        return results
 
     def _validate_relations(
         self, conn: sqlite3.Connection, model: ModelDef, data: dict[str, Any]

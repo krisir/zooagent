@@ -11,10 +11,10 @@ from __future__ import annotations
 import json
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from ..errors import ValidationFailure
-from ..models.schema import FieldDef, ModelDef
+from ..models.schema import KEY_PATTERN, FieldDef, ModelDef
 
 FilterOperator = Literal[
     "eq",
@@ -60,6 +60,19 @@ class Aggregation(BaseModel):
     function: Literal["count", "sum", "avg", "min", "max"]
     field: str | None = None
     alias: str | None = None
+
+    @field_validator("alias")
+    @classmethod
+    def _check_alias(cls, value: str | None) -> str | None:
+        # The alias is the only identifier that reaches the SQL text without
+        # going through ``field_expr``, so it must be a plain identifier too.
+        if value is None:
+            return None
+        if not KEY_PATTERN.match(value):
+            raise ValueError(
+                "聚合别名 alias 必须以小写字母开头，只能包含小写字母、数字和下划线"
+            )
+        return value
 
     @property
     def output_name(self) -> str:

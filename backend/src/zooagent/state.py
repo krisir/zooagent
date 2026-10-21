@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
+import os
 import secrets
+import stat
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -71,9 +74,11 @@ class AppState:
         return state
 
     def write_session(self, port: int | None = None) -> None:
-        """Persist port/token for the desktop host and for local debugging."""
-        import json
+        """Persist port/token for the desktop host and for local debugging.
 
+        The file carries the session token, so it gets the same treatment as the
+        settings file: written atomically, readable by its owner only.
+        """
         payload: dict[str, object] = {
             "token": self.token,
             "workspace": str(self.paths.root),
@@ -83,4 +88,7 @@ class AppState:
             payload["base_url"] = f"http://127.0.0.1:{port}"
         file = self.paths.session_file
         file.parent.mkdir(parents=True, exist_ok=True)
-        file.write_text(json.dumps(payload, indent=2), "utf-8")
+        tmp = file.with_name(file.name + ".tmp")
+        tmp.write_text(json.dumps(payload, indent=2), "utf-8")
+        os.chmod(tmp, stat.S_IRUSR | stat.S_IWUSR)
+        tmp.replace(file)

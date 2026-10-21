@@ -12,7 +12,7 @@ from typing import Any
 from fastapi import APIRouter, Body, Depends, Query
 
 from ..data.query import AggregateSpec, QuerySpec
-from ..errors import NotFoundError
+from ..errors import ValidationFailure
 from ..models.schema import ModelDef
 from ..state import AppState
 from .deps import get_state, require_token
@@ -115,7 +115,7 @@ def create_record(
 ) -> dict[str, Any]:
     values = payload.get("values", payload)
     if not isinstance(values, dict):
-        raise NotFoundError("记录内容必须是对象")
+        raise ValidationFailure("记录内容必须是对象")
     with state.service.open_app(application_id) as ctx:
         model = ctx.models.get_model(ctx.conn, model_key)
         with ctx.conn:
@@ -147,7 +147,12 @@ def update_record(
     state: AppState = Depends(get_state),
 ) -> dict[str, Any]:
     values = payload.get("values", payload)
-    expected_revision = payload.get("expected_revision") if isinstance(payload.get("values"), dict) else None
+    expected_revision = None
+    if isinstance(payload.get("values"), dict) and payload.get("expected_revision") is not None:
+        try:
+            expected_revision = int(payload["expected_revision"])
+        except (TypeError, ValueError):
+            raise ValidationFailure("expected_revision 必须是整数") from None
     with state.service.open_app(application_id) as ctx:
         model = ctx.models.get_model(ctx.conn, model_key)
         with ctx.conn:

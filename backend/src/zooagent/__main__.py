@@ -43,7 +43,12 @@ def bind_socket(host: str, port: int) -> socket.socket:
     that guarantee true even when importing heavy dependencies takes seconds.
     """
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    if os.name == "nt":  # pragma: no cover - windows only
+        # Windows 的 SO_REUSEADDR 语义是"允许别人抢占同一端口"，用它反而会让
+        # 另一个进程也能绑上这个端口。SO_EXCLUSIVEADDRUSE 才是独占语义。
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+    else:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind((host, port))
     sock.listen(128)
     sock.set_inheritable(True)
@@ -104,7 +109,11 @@ def start_parent_watchdog(pid: int) -> threading.Thread | None:
     def _watch() -> None:
         while True:
             time.sleep(PARENT_CHECK_INTERVAL)
-            if not _parent_alive(pid):
+            try:
+                alive = _parent_alive(pid)
+            except Exception:  # pragma: no cover - 平台差异，别让看门狗自己先崩掉
+                alive = True
+            if not alive:
                 _log_stderr({"event": "parent-exited", "parent_pid": pid})
                 os._exit(0)
 
