@@ -128,6 +128,23 @@
       "title": "Group By",
       "type": "array"
     },
+    "granularity": {
+      "anyOf": [
+        {
+          "enum": [
+            "day",
+            "month",
+            "year"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Granularity"
+    },
     "aggregations": {
       "items": {
         "$ref": "#/$defs/Aggregation"

@@ -1,0 +1,117 @@
+name: CI
+
+# 每次推送到 main、每个 PR 跑一遍：后端测试 + 前端构建 + Rust 壳编译。
+# 安装包不在这里出——见 desktop.yml（Windows/macOS 原生构建，慢且需要缓存）。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# 同一分支上新的推送取消上一轮，省 runner 时间
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: 后端（ruff / pytest / 评测）
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      # 测试和评测都在临时工作空间里跑，别落到 runner 的家目录
+      ZOOAGENT_HOME: ${{ runner.temp }}/zooagent-home
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 安装 uv + Python
+        uses: astral-sh/setup-uv@v10.3.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      # 带上 AgentScope：test_agentscope_runtime.py 用的是 importorskip，
+      # 不装就会静默跳过，等于没测运行时。
+      - name: 同步依赖
+        run: uv sync --frozen --extra agentscope
+
+      - name: Ruff
+        run: |
+          uv run ruff check src tests
+          # 打包脚本在 backend 之外，显式指定配置以免退化成 ruff 默认值
+          uv run ruff check --config pyproject.toml ../scripts/build/build-app.py
+
+      - name: Pytest
+        run: uv run pytest -q
+
+      - name: 契约文件与代码一致
+        run: uv run python ../scripts/dev/export_contracts.py --check
+
+      - name: 生成质量评测（离线 + mock）
+        run: uv run python -m zooagent.eval --provider offline --provider mock --quiet
+
+  frontend:
+    name: 前端（tsc / vite build）
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@v7
+
+      # pnpm 必须早于 setup-node，否则 cache: pnpm 找不到 pnpm
+      - uses: pnpm/action-setup@v6
+        with:
+          version: "10"
+
+      - name: 安装 Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: apps/desktop/pnpm-lock.yaml
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      # build 脚本本身就是 `tsc --noEmit && vite build`
+      - name: 类型检查 + 构建
+        run: pnpm build
+
+  desktop-shell:
+    name: 桌面壳（cargo check）
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 安装 Tauri 的 Linux 构建依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+
+      # generate_context! 会去读 frontendDist，只要是存在的目录就行
+      - name: 造一个占位前端产物
+        run: |
+          mkdir -p apps/desktop/dist
+          echo '<!doctype html><title>placeholder</title>' > apps/desktop/dist/index.html
+
+      - name: cargo check
+        working-directory: apps/desktop/src-tauri
+        run: cargo check --locked

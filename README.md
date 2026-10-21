@@ -1,5 +1,8 @@
 # zooagent
 
+[![CI](https://github.com/krisir/zooagent/actions/workflows/ci.yml/badge.svg)](https://github.com/krisir/zooagent/actions/workflows/ci.yml)
+[![桌面安装包](https://github.com/krisir/zooagent/actions/workflows/desktop.yml/badge.svg)](https://github.com/krisir/zooagent/actions/workflows/desktop.yml)
+
 本地优先的个人 **AI 应用平台**。你只需要用自己的话描述业务需求，一个主助手就会为你创建数据模型、业务操作和可操作的界面；数据永远保存在本机。
 
 > 核心定位：Excel 的灵活性 + AI 的理解能力 + 传统软件的可靠性。
@@ -143,6 +146,8 @@ powershell -ExecutionPolicy Bypass -File scripts\build\build-app.ps1
 - macOS：`apps/desktop/src-tauri/target/release/bundle/macos/zooagent.app`（55–56 MB；不带 AgentScope 约 29 MB），DMG 在 `bundle/dmg/`
 - Windows：`apps/desktop/src-tauri/target/release/bundle/nsis/zooagent_<版本>_x64-setup.exe`（按用户安装、中文界面；`tauri.windows.conf.json` 里配置）
 
+CI 里也是同一条命令（见 [.github/workflows/desktop.yml](.github/workflows/desktop.yml)）：手动触发只出产物，打 `v*` tag 会连 Release 一起发。
+
 **两端各跑一次，不做交叉编译**：PyInstaller 只能在目标系统上产出该系统的可执行文件，NSIS/MSI 也只能在 Windows 上生成。想在 Linux 上出 macOS/Windows 包需要 macOS + Windows 的构建机（CI 两个 runner 各跑一遍上面的命令即可）。DMG 会驱动 Finder 排版磁盘镜像，在无图形会话或未授予自动化权限的环境中会失败。
 
 签名：macOS 设置 `APPLE_CERTIFICATE` / `APPLE_CERTIFICATE_PASSWORD` / `APPLE_ID` / `APPLE_TEAM_ID` 等变量让 Tauri 签名并公证；Windows 用代码签名证书（Tauri 的 `signCommand` 或 EV 证书）。未签名的包在别的机器上会被 Gatekeeper / SmartScreen 拦下。
@@ -229,11 +234,14 @@ scripts/dev/           开发辅助（起服务、截图校验、灌数据、导
 ## 测试与校验
 
 ```bash
-cd backend && uv run pytest        # 55 个用例：引擎 / 事务 / 离线端到端 / HTTP / AgentScope / mock 数据 / Eval
+cd backend && uv run pytest        # 94 个用例：引擎 / 事务 / 离线端到端 / HTTP / AgentScope / mock 数据 / Eval
 cd backend && uv run ruff check src tests
+cd backend && uv run python ../scripts/dev/export_contracts.py --check   # 契约文件是否跟代码一致
 cd apps/desktop && pnpm build      # tsc --noEmit + vite build
 cd apps/desktop/src-tauri && cargo check
 ```
+
+CI（[.github/workflows/ci.yml](.github/workflows/ci.yml)）在每次推送和 PR 上跑同一套：后端 job（ruff / pytest / 契约校验 / 评测，带 AgentScope）、前端 job（tsc + vite build）、桌面壳 job（cargo check）。安装包由 [.github/workflows/desktop.yml](.github/workflows/desktop.yml) 在 macOS 与 Windows 两个 runner 上原生构建——打 `v*` tag 时会自动创建 Release 并附上产物，也可以在 Actions 页面手动触发。
 
 ## 当前范围与后续
 

@@ -1,0 +1,134 @@
+name: 桌面安装包
+
+# 真机出包：PyInstaller 和 NSIS 都不支持交叉编译，所以 macOS 和 Windows 各跑一个 runner，
+# 直接调用 scripts/build/build-app.*（CI 跑的就是发布用的那条路径）。
+#
+# 触发方式：
+#   - 打 tag（v1.2.3）：构建 + 创建 Release 并附上安装包
+#   - 手动触发：只构建，产物留在 Actions 页面下载
+
+on:
+  workflow_dispatch:
+    inputs:
+      macos_bundles:
+        description: "macOS 安装包类型（app / app,dmg）"
+        default: "app"
+      windows_bundles:
+        description: "Windows 安装包类型（nsis / nsis,msi）"
+        default: "nsis"
+  push:
+    tags: ["v*"]
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write # 打 tag 时要创建 Release
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (arm64)
+            os: macos-latest
+            artifact: zooagent-macos-arm64
+          - name: Windows (x64)
+            os: windows-latest
+            artifact: zooagent-windows-x64
+    env:
+      # 没手动传输入（tag 触发）时退回默认值
+      MACOS_BUNDLES: ${{ inputs.macos_bundles || 'app' }}
+      WINDOWS_BUNDLES: ${{ inputs.windows_bundles || 'nsis' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: 安装 uv + Python
+        uses: astral-sh/setup-uv@v10.3.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: "10"
+
+      - name: 安装 Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: apps/desktop/pnpm-lock.yaml
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+
+      - name: 安装前端依赖
+        working-directory: apps/desktop
+        run: pnpm install --frozen-lockfile
+
+      # 脚本自己会做 pnpm build + PyInstaller + tauri build
+      - name: 构建安装包
+        if: runner.os == 'macOS'
+        shell: bash
+        run: ./scripts/build/build-app.sh --bundles "$MACOS_BUNDLES"
+
+      - name: 构建安装包
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/build/build-app.ps1 --bundles $env:WINDOWS_BUNDLES
+
+      - name: 收集产物
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist-artifacts
+          bundle=apps/desktop/src-tauri/target/release/bundle
+          find "$bundle" -maxdepth 3 -type f \
+            \( -name '*.dmg' -o -name '*.exe' -o -name '*.msi' -o -name '*.AppImage' -o -name '*.deb' \) \
+            -exec cp {} dist-artifacts/ \;
+          # .app 是目录：zip 时用 ditto 才能保住符号链接和资源分支
+          if [ -d "$bundle/macos/zooagent.app" ]; then
+            arch=$(echo "${RUNNER_ARCH:-arm64}" | tr '[:upper:]' '[:lower:]')
+            ditto -c -k --keepParent "$bundle/macos/zooagent.app" "dist-artifacts/zooagent-macos-$arch.app.zip"
+          fi
+          ls -lh dist-artifacts
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist-artifacts/*
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: 发布 Release
+    # 只有 tag 触发才发版；单个 job 汇总两个平台的产物，避免 mac/win 抢着建 Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist-artifacts
+          merge-multiple: true
+
+      - name: 创建 Release 并上传安装包
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          ls -lh dist-artifacts
+          gh release create "$GITHUB_REF_NAME" dist-artifacts/* \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
