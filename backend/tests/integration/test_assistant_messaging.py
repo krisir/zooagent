@@ -17,7 +17,7 @@ from zooagent.agents.messaging import (
     application_message_tool,
     primary_message_tool,
 )
-from zooagent.agents.runtime import AgentRuntime
+from zooagent.agents.mini_loop import MiniLoop
 from zooagent.agents.tools import ToolRegistry, build_application_tools
 from zooagent.main import create_app
 
@@ -104,7 +104,7 @@ def test_application_assistant_forwards_to_primary(state, monkeypatch) -> None:
     registry = build_application_tools(state.service, application.id)
     primary_message_tool(registry)
     prepared = PreparedAgent(
-        runtime=AgentRuntime(
+        runtime=MiniLoop(
             chat_model=_ForwardingModel(), registry=registry, system_prompt="test"
         ),
         agent=agent,
@@ -117,7 +117,7 @@ def test_application_assistant_forwards_to_primary(state, monkeypatch) -> None:
         {"list_models"}
     )
     plan = PreparedAgent(
-        runtime=AgentRuntime(
+        runtime=MiniLoop(
             chat_model=_PlanModel(), registry=primary_registry, system_prompt="test"
         ),
         agent=primary_agent,
@@ -179,7 +179,7 @@ def test_primary_assistant_can_ask_an_application_assistant(state, monkeypatch) 
     primary_registry = ToolRegistry()
     application_message_tool(primary_registry, state.service)
     prepared = PreparedAgent(
-        runtime=AgentRuntime(
+        runtime=MiniLoop(
             chat_model=asking,
             registry=primary_registry,
             system_prompt="test",
@@ -190,7 +190,7 @@ def test_primary_assistant_can_ask_an_application_assistant(state, monkeypatch) 
     monkeypatch.setattr(state.agents, "primary", lambda: prepared)
 
     answering = PreparedAgent(
-        runtime=AgentRuntime(
+        runtime=MiniLoop(
             chat_model=_AnsweringModel(),
             registry=build_application_tools(state.service, application.id),
             system_prompt="test",

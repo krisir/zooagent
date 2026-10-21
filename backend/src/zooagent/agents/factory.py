@@ -1,9 +1,7 @@
-"""Wire an agent (prompt + tools + model profile + runtime) for a request.
+"""Wire an agent (prompt + tools + model profile + loop) for a request.
 
-AgentScope is imported lazily: the packaged sidecar must start fast for the
-majority of users who never configure an AgentScope profile, so importing
-AgentScope (which pulls dashscope/openai/etc.) is deferred until a request
-actually needs it.
+AgentScope 的导入是惰性的：两边都是真实 LLM 的唯一路径，但只用 offline/mock 的
+用户不需要为它付启动时间（未安装 extra 时导入会失败，这里要能容忍）。
 """
 
 from __future__ import annotations
@@ -14,15 +12,15 @@ from ..application.conversations import ConversationStore
 from ..application.service import Agent, ApplicationService
 from ..config import ModelProfile, SettingsService
 from ..errors import ConfigurationError
-from .llm import build_chat_model
+from .llm.offline import OfflinePlannerModel
 from .messaging import application_message_tool, primary_message_tool
+from .mini_loop import AgentLoopProtocol, MiniLoop, to_history_messages
 from .prompts import (
     ACTION_DIAGNOSIS_PROMPT,
     application_system_prompt,
     assistant_message_prompt,
     primary_system_prompt,
 )
-from .runtime import AgentRuntime, AgentRuntimeProtocol, to_history_messages
 from .tools import build_application_tools, build_primary_tools
 
 
@@ -32,9 +30,7 @@ def describe_runtime(profile: ModelProfile) -> str:
         return "AgentScope"
     if profile.provider == "mock":
         return "AgentScope (mock)" if _agentscope_available() else "mock"
-    if profile.provider == "offline":
-        return "offline"
-    return "built-in"
+    return "offline"
 
 
 def _agentscope_available() -> bool:
@@ -45,7 +41,7 @@ def _agentscope_available() -> bool:
 
 @dataclass
 class PreparedAgent:
-    runtime: AgentRuntimeProtocol
+    runtime: AgentLoopProtocol
     agent: Agent
     conversation_rows: list
 
@@ -68,8 +64,8 @@ class AgentFactory:
         registry,
         system_prompt: str,
         max_iterations: int,
-    ) -> AgentRuntimeProtocol:
-        """Pick the runtime: AgentScope for agentscope/mock, built-in otherwise."""
+    ) -> AgentLoopProtocol:
+        """Pick the loop: AgentScope for every real LLM, MiniLoop for deterministic models."""
         profile = self.settings.active_profile()
 
         if profile.provider == "mock":
@@ -88,30 +84,31 @@ class AgentFactory:
                     system_prompt=system_prompt,
                     max_iterations=max_iterations,
                 )
-            return AgentRuntime(
+            return MiniLoop(
                 chat_model=MockChatModelLite(profile),
                 registry=registry,
                 system_prompt=system_prompt,
                 max_iterations=max_iterations,
             )
 
-        if profile.provider == "agentscope":
-            if not _agentscope_available():
-                raise ConfigurationError(
-                    "该模型配置使用 AgentScope，请先安装可选依赖：uv sync --extra agentscope"
-                )
-            from .agentscope.models import build_chat_model as build_agentscope_model
-            from .agentscope.runtime import AgentScopeRuntime
-
-            return AgentScopeRuntime(
-                model=build_agentscope_model(profile),
+        if profile.provider == "offline":
+            return MiniLoop(
+                chat_model=OfflinePlannerModel(),
                 registry=registry,
                 system_prompt=system_prompt,
                 max_iterations=max_iterations,
             )
 
-        return AgentRuntime(
-            chat_model=build_chat_model(profile),
+        # 真实 LLM 只有一条路：AgentScope 的 ReAct Agent。
+        if not _agentscope_available():
+            raise ConfigurationError(
+                "该模型配置需要 AgentScope 运行时，请先安装可选依赖：uv sync --extra agentscope"
+            )
+        from .agentscope.models import build_chat_model as build_agentscope_model
+        from .agentscope.runtime import AgentScopeRuntime
+
+        return AgentScopeRuntime(
+            model=build_agentscope_model(profile),
             registry=registry,
             system_prompt=system_prompt,
             max_iterations=max_iterations,

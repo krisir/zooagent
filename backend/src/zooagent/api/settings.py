@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends
@@ -66,27 +67,6 @@ PROVIDER_PRESETS: list[dict[str, Any]] = [
         "models": ["claude-sonnet-4-5"],
     },
     {
-        "key": "openai",
-        "label": "OpenAI 兼容（内置运行时）",
-        "provider": "openai",
-        "base_url": "https://api.openai.com/v1",
-        "models": ["gpt-4o-mini", "gpt-4o"],
-    },
-    {
-        "key": "deepseek",
-        "label": "DeepSeek（内置运行时）",
-        "provider": "openai",
-        "base_url": "https://api.deepseek.com/v1",
-        "models": ["deepseek-chat"],
-    },
-    {
-        "key": "ollama",
-        "label": "Ollama（内置运行时，本机）",
-        "provider": "ollama",
-        "base_url": "http://127.0.0.1:11434/v1",
-        "models": ["qwen2.5:7b", "llama3.1:8b"],
-    },
-    {
         "key": "mock",
         "label": "Mock（AgentScope 接口，生成测试数据）",
         "provider": "mock",
@@ -101,6 +81,21 @@ PROVIDER_PRESETS: list[dict[str, Any]] = [
         "models": ["offline-planner"],
     },
 ]
+
+
+PROBE_PROMPT = "只回复两个字：可用"
+
+
+async def _probe_agentscope(profile: ModelProfile) -> str:
+    """One tiny completion through an AgentScope model."""
+    from ..agents.agentscope.convert import UserMsg, text_of
+    from ..agents.agentscope.models import build_chat_model as build_agentscope_model
+
+    model = build_agentscope_model(profile)
+    response = await model(
+        messages=[UserMsg(name="user", content=PROBE_PROMPT)], tools=None
+    )
+    return text_of(response).strip()
 
 
 def _key_hint(key: str | None) -> str:
@@ -148,7 +143,7 @@ def upsert_profile(
     body = {
         "id": profile_id,
         "name": payload.get("name") or (existing.name if existing else "新模型"),
-        "provider": payload.get("provider") or (existing.provider if existing else "openai"),
+        "provider": payload.get("provider") or (existing.provider if existing else "agentscope"),
         "base_url": payload.get("base_url")
         if payload.get("base_url") is not None
         else (existing.base_url if existing else ""),
@@ -193,9 +188,6 @@ def test_profile(
     state: AppState = Depends(get_state),
 ) -> dict[str, Any]:
     """Send a single tiny completion to verify the configuration."""
-    from ..agents.llm import build_chat_model
-    from ..agents.llm.base import ChatMessage
-
     settings = state.settings.load()
     profile_id = payload.get("profile_id") or settings.active_model_profile_id
     profile = next(
@@ -209,36 +201,8 @@ def test_profile(
             "message": "该模式不联网，可直接使用（可用「生成测试数据」验证界面）。",
         }
 
-    import asyncio
-
-    if profile.provider == "agentscope":
-        from ..agents.agentscope.convert import UserMsg, text_of
-        from ..agents.agentscope.models import build_chat_model as build_agentscope_model
-
-        model = build_agentscope_model(profile)
-
-        async def _probe_agentscope() -> str:
-            response = await model(
-                messages=[UserMsg(name="user", content="只回复两个字：可用")],
-                tools=None,
-            )
-            return text_of(response).strip()
-
-    else:
-        model = build_chat_model(profile)  # type: ignore[assignment]
-
-        async def _probe_agentscope() -> str:
-            turn = await model.complete(  # type: ignore[attr-defined]
-                [
-                    ChatMessage(role="system", content="你是连通性测试助手。"),
-                    ChatMessage(role="user", content="只回复两个字：可用"),
-                ],
-                [],
-            )
-            return (turn.content or "").strip()
-
     try:
-        text = asyncio.run(_probe_agentscope())
+        text = asyncio.run(_probe_agentscope(profile))
     except ProviderError as exc:
         return {"ok": False, "message": exc.message, "details": exc.details}
     except Exception as exc:  # pragma: no cover - network surprises

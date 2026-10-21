@@ -13,7 +13,7 @@ from typing import Any
 
 from zooagent.actions.schema import ActionDef
 from zooagent.agents.llm.base import AssistantTurn, ChatMessage, ToolCall
-from zooagent.agents.runtime import AgentRuntime
+from zooagent.agents.mini_loop import MiniLoop
 from zooagent.agents.tools import build_application_tools
 from zooagent.data.query import QuerySpec
 from zooagent.models.schema import FieldDef, ModelDef
@@ -84,7 +84,7 @@ def test_successful_action_marks_refresh(ctx, state) -> None:
 
     registry = build_application_tools(state.service, ctx.application.id)
     scripted = _ScriptedModel("log_period", {"start_date": "2026-10-20"})
-    runtime = AgentRuntime(chat_model=scripted, registry=registry, system_prompt="test")
+    runtime = MiniLoop(chat_model=scripted, registry=registry, system_prompt="test")
 
     events = asyncio.run(_collect(runtime.stream(history=[], user_text="今天来了")))
     final = [event for event in events if event["type"] == "assistant_message"][-1]

@@ -55,7 +55,12 @@ def test_family_resolution_from_profile() -> None:
     )
     assert resolve_family(qwen) == "dashscope"
 
-    local = ModelProfile(id="p", name="local", provider="ollama", model_name="qwen2.5:7b")
+    local = ModelProfile(
+        id="p",
+        name="local",
+        base_url="http://127.0.0.1:11434",
+        model_name="qwen2.5:7b",
+    )
     assert resolve_family(local) == "ollama"
 
     explicit = ModelProfile(id="p", name="x", model_name="my-model", model_family="openai")

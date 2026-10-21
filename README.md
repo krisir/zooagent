@@ -93,8 +93,8 @@ cd backend && uv run python -m zooagent.eval --provider offline --provider mock
 
 ```bash
 cd apps/desktop && pnpm install
-cd ../../backend && uv sync                 # 基础（离线/内置运行时/Mock）
-cd ../../backend && uv sync --extra agentscope  # 需要 AgentScope 运行时
+cd ../../backend && uv sync                 # 基础（离线 / Mock 兜底）
+cd ../../backend && uv sync --extra agentscope  # 接真实模型（AgentScope 运行时）
 ```
 
 ### 浏览器开发（最快）
@@ -171,7 +171,7 @@ CI 里也是同一条命令（见 [.github/workflows/desktop.yml](.github/workfl
 
 选这些配置时，推理循环、工具协议与模型接入都由 AgentScope 2.0 负责（见 ADR-0002）；打包版已随包分发 AgentScope，从源码运行则需要 `cd backend && uv sync --extra agentscope`。
 
-**内置轻量运行时**：`OpenAI 兼容` / `Ollama` 两个预设走自研的 provider 无关循环，无需额外依赖，适合分发与离线环境。
+**只有一套 LLM 循环**：真实模型（OpenAI / DeepSeek / Moonshot / 通义千问 / Ollama / Anthropic）全部经 AgentScope 的 ReAct Agent 驱动，不再有自研的 OpenAI 兼容客户端；老版本里 `provider: openai|ollama` 的配置启动时自动迁移成 `agentscope`，密钥与地址原样保留（ADR-0016）。自研循环 `MiniLoop` 只留给不联网的 offline 模板规划器和 mock 兜底。
 
 **Mock 模式（UI 测试用）**：按 AgentScope 接口实现的 mock 模型，不联网，会创建完整的应用结构；测试数据由应用助手生成（主助手不碰业务数据，见 ADR-0006）。
 

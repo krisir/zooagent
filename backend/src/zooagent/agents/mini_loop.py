@@ -1,7 +1,13 @@
-"""Agent runtime: a small, provider-neutral tool-calling loop.
+"""非 LLM 模式的工具调用循环。
 
-The loop is deliberately simple and observable - it streams every tool call and
-its result to the client so the user can always see what the assistant did.
+真实 LLM 的 Agent 循环只有一套，在 ``agents/agentscope/runtime.py`` 里（AgentScope
+的 ReAct Agent）。这里保留下来的极简循环只服务**确定性模型**：
+
+* ``offline`` —— 内置模板规划器（规则匹配，不联网）
+* ``mock`` —— 没装 AgentScope extra 时的兜底模型（``MockChatModelLite``）
+* 测试 —— 用手写脚本模型精确控制每一步工具调用
+
+它刻意保持简单可观测：每一次工具调用和结果都流给客户端，用户随时看得见助手做了什么。
 """
 
 from __future__ import annotations
@@ -15,15 +21,17 @@ from .llm.base import ChatMessage, ChatModel
 from .tools.registry import ToolRegistry
 
 
-class AgentRuntimeProtocol(Protocol):
-    """What the HTTP layer needs from a runtime (built-in or AgentScope)."""
+class AgentLoopProtocol(Protocol):
+    """HTTP 层对「一条 Agent 循环」的全部要求（AgentScope 与 MiniLoop 都满足）。"""
 
     def stream(
         self, *, history: list[ChatMessage], user_text: str
     ) -> AsyncIterator[dict[str, Any]]: ...  # pragma: no cover - protocol
 
 
-class AgentRuntime:
+class MiniLoop:
+    """无规划能力的循环：模型给出工具调用就执行，给完话就收尾。"""
+
     def __init__(
         self,
         *,
@@ -80,8 +88,12 @@ class AgentRuntime:
             )
 
             for call in turn.tool_calls:
+                # The id lets the client pair a result with its call even when
+                # several calls stream out back to back.
+                call_id = call.id or f"call_{len(tool_log) + 1}"
                 yield {
                     "type": "tool_call",
+                    "id": call_id,
                     "name": call.name,
                     "arguments": call.arguments,
                 }
@@ -90,6 +102,7 @@ class AgentRuntime:
                     refresh = True
                 yield {
                     "type": "tool_result",
+                    "id": call_id,
                     "name": call.name,
                     "ok": result.get("ok", False),
                     "result": result.get("result"),
@@ -106,7 +119,7 @@ class AgentRuntime:
                 messages.append(
                     ChatMessage(
                         role="tool",
-                        tool_call_id=call.id or f"call_{len(tool_log)}",
+                        tool_call_id=call_id,
                         name=call.name,
                         content=_serialize_result(result),
                     )

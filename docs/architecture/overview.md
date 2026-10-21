@@ -26,7 +26,7 @@ SQLite                        platform.db + 每个应用一个 data.db
 
 ```
 POST /api/chat/primary
-  → AgentRuntime: system prompt + 历史 + 用户消息
+  → Agent 循环（AgentScope ReAct）: system prompt + 历史 + 用户消息
   → LLM 返回 tool_calls（create_application / define_model / ...）
   → ToolRegistry 执行工具（Pydantic 校验 → 引擎 → 事务）
   → 工具结果回填给模型，直到模型不再调用工具
@@ -72,16 +72,17 @@ Action 的 `values` 支持三种形式：字面量、`{"ref": "input.amount"}`�
 
 ### Agent 运行时
 
-运行时由模型配置的 `provider` 决定，两条路径共享同一套工具与引擎：
+运行时由模型配置的 `provider` 决定，所有路径共享同一套工具与引擎：
 
 | provider | 运行时 | 说明 |
 | --- | --- | --- |
-| `agentscope` | AgentScope `Agent`（ReAct） | 推理循环、工具协议、模型接入均由 AgentScope 2.0 负责（ADR-0002） |
-| `openai` / `ollama` | 自研轻量循环 | 无额外依赖，便于分发 |
-| `mock` | AgentScope 接口的 mock 模型 | 真实 AgentScope 链路 + 确定性与测试数据（ADR-0006） |
-| `offline` | 内置模板规划器 | 无密钥也能走完验收闭环（ADR-0005） |
+| `agentscope` | AgentScope `Agent`（ReAct） | **真实 LLM 的唯一路径**：推理循环、工具协议、模型接入都由 AgentScope 2.0 负责（ADR-0002、ADR-0016） |
+| `mock` | AgentScope 接口的 mock 模型 | 真实 AgentScope 链路 + 确定性测试数据；没装 extra 时退回 `MiniLoop`（ADR-0006） |
+| `offline` | 内置模板规划器（`MiniLoop`） | 无密钥也能走完验收闭环（ADR-0005） |
 
-自研运行时的循环：模型返回 `tool_calls` → 注册表执行 → 结果回填。工具结果以 `{ok, result|error}` 回传，模型可以看到校验错误并自行修正。
+厂商不是运行时：`openai` / `deepseek` / `moonshot` / `dashscope` / `ollama` / `anthropic` 在 AgentScope 里只是 `model_family`。旧版本写死的 `provider: openai|ollama` 配置会在启动时自动迁移成 `agentscope`（ADR-0016）。
+
+`MiniLoop`（`agents/mini_loop.py`）只服务确定性模型（offline 模板规划器、mock 兜底、测试里的脚本模型），不面向真实 LLM：模型返回 `tool_calls` → 注册表执行 → 结果回填。工具结果以 `{ok, result|error}` 回传，模型可以看到校验错误并自行修正。
 
 接入 AgentScope 时的桥接要点（都是实测出来的契约）：
 

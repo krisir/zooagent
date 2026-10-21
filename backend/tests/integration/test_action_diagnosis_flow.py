@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from zooagent.actions.schema import ActionDef
 from zooagent.agents.factory import PreparedAgent
 from zooagent.agents.llm.base import AssistantTurn, ChatMessage, ToolCall
-from zooagent.agents.runtime import AgentRuntime
+from zooagent.agents.mini_loop import MiniLoop
 from zooagent.agents.tools import build_application_tools
 from zooagent.main import create_app
 from zooagent.models.schema import FieldDef, ModelDef
@@ -104,7 +104,7 @@ def _prepare(state):
 def test_chat_stream_diagnoses_a_failed_action(state, monkeypatch) -> None:
     application = _prepare(state)
     agent = state.service.get_agent(application.id)
-    runtime = AgentRuntime(
+    runtime = MiniLoop(
         chat_model=_FailingActionModel(),
         registry=build_application_tools(state.service, application.id),
         system_prompt="test",

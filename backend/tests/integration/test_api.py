@@ -313,7 +313,7 @@ def test_chat_stream_and_settings(client: TestClient) -> None:
 
     settings = client.get("/api/settings").json()
     assert settings["active_model_profile_id"] == "profile_offline"
-    assert any(provider["key"] == "deepseek" for provider in settings["providers"])
+    assert any(provider["key"] == "agentscope-deepseek" for provider in settings["providers"])
     offline_profile = settings["profiles"][0]
     assert "api_key" not in offline_profile
     assert offline_profile["api_key_set"] is False

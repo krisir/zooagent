@@ -129,15 +129,12 @@ _MODEL_HINTS: tuple[tuple[str, tuple[str, ...]], ...] = (
 def resolve_family(profile: ModelProfile) -> str:
     """Pick the AgentScope family from the profile.
 
-    Order matters: an explicit ``model_family`` wins, then the declared
-    provider, then specific endpoint hints, then model-name hints, and finally
-    an OpenAI-compatible endpoint - which is the safest default because most
-    vendors expose that API shape.
+    Order matters: an explicit ``model_family`` wins, then endpoint hints, then
+    model-name hints, and finally an OpenAI-compatible endpoint - which is the
+    safest default because most vendors expose that API shape.
     """
     if profile.model_family and profile.model_family in MODEL_FAMILIES:
         return profile.model_family
-    if profile.provider == "ollama":
-        return "ollama"
 
     base_url = (profile.base_url or "").lower()
     for family, hints in _BASE_URL_HINTS:

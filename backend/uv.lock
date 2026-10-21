@@ -3390,7 +3390,6 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
-    { name = "httpx" },
     { name = "pydantic" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -3405,6 +3404,7 @@ packaging = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "httpx" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "ruff" },
@@ -3414,7 +3414,6 @@ dev = [
 requires-dist = [
     { name = "agentscope", marker = "extra == 'agentscope'", specifier = ">=2.0.10" },
     { name = "fastapi", specifier = ">=0.115,<1" },
-    { name = "httpx", specifier = ">=0.28,<1" },
     { name = "pydantic", specifier = ">=2.9,<3" },
     { name = "pyinstaller", marker = "extra == 'packaging'", specifier = ">=6.11,<7" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34,<1" },
@@ -3423,6 +3422,7 @@ provides-extras = ["packaging", "agentscope"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "httpx", specifier = ">=0.28,<1" },
     { name = "pytest", specifier = ">=8.3,<9" },
     { name = "pytest-asyncio", specifier = ">=0.24,<1" },
     { name = "ruff", specifier = ">=0.8,<1" },

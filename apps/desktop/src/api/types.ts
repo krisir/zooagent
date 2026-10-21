@@ -217,7 +217,7 @@ export interface ChatEvent {
 export interface ModelProfile {
   id: string;
   name: string;
-  /** agentscope / openai / ollama / mock / offline — set by presets, not edited. */
+  /** agentscope / offline / mock — set by presets, not edited. */
   provider: string;
   model_family?: string | null;
   base_url: string;

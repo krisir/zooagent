@@ -46,10 +46,10 @@ class ModelProfile(BaseModel):
 
     ``provider`` selects *how* the model is driven:
 
-    * ``openai`` / ``ollama`` - the built-in lightweight runtime（无额外依赖）
-    * ``agentscope`` - AgentScope 的 ReAct Agent 作为运行时与 LLM 接入层
+    * ``agentscope`` - AgentScope 的 ReAct Agent + LLM 接入层（真实 LLM 的唯一路径，
+      openai/deepseek/moonshot/dashscope/ollama/anthropic 都由 ``model_family`` 区分）
     * ``mock`` - AgentScope 接口的 mock 模型，产出测试数据，不联网
-    * ``offline`` - 内置模板规划器
+    * ``offline`` - 内置模板规划器（确定性规则，不联网）
 
     ``api_key`` is kept in the workspace settings file (mode 0600) for the
     first version. Moving it to the OS keychain is tracked in docs/adr.
@@ -57,7 +57,7 @@ class ModelProfile(BaseModel):
 
     id: str
     name: str
-    provider: Literal["openai", "ollama", "offline", "agentscope", "mock"] = "openai"
+    provider: Literal["agentscope", "offline", "mock"] = "agentscope"
     base_url: str = DEFAULT_OPENAI_BASE_URL
     model_name: str = "gpt-4o-mini"
     api_key: str | None = None
@@ -84,6 +84,32 @@ class Settings(BaseModel):
     language: str = "zh-CN"
     theme: str = "system"
     telemetry_enabled: bool = False
+
+
+#: 旧版本里 ``openai`` / ``ollama`` 走的是自研循环，现在真实 LLM 一律经 AgentScope。
+#: 读到这种配置就就地改写，用户不用重新填一遍（密钥、base_url、模型名全部保留）。
+LEGACY_PROVIDER_ALIASES = {"openai": "agentscope", "ollama": "agentscope"}
+
+
+def _migrate_legacy_providers(raw: dict[str, object]) -> bool:
+    """把老配置里的 provider 改成 ``agentscope``，返回是否改动过。"""
+    profiles = raw.get("model_profiles")
+    if not isinstance(profiles, list):
+        return False
+    changed = False
+    for profile in profiles:
+        if not isinstance(profile, dict):
+            continue
+        legacy = profile.get("provider")
+        target = LEGACY_PROVIDER_ALIASES.get(legacy) if isinstance(legacy, str) else None
+        if target is None:
+            continue
+        profile["provider"] = target
+        # ollama 的 base_url 在旧预设里带 /v1，靠 family 显式声明最稳。
+        if legacy == "ollama" and not profile.get("model_family"):
+            profile["model_family"] = "ollama"
+        changed = True
+    return changed
 
 
 def default_settings() -> Settings:
@@ -188,7 +214,10 @@ class SettingsService:
             raw = json.loads(file.read_text("utf-8"))
         except (OSError, ValueError) as exc:  # pragma: no cover - corrupted file
             raise ConfigurationError(f"无法解析配置文件: {file}") from exc
+        migrated = isinstance(raw, dict) and _migrate_legacy_providers(raw)
         settings = Settings.model_validate(raw)
+        if migrated:  # 把文件一次性升级成新写法，避免每次启动都改写
+            return self.save(settings)
         self._cached = settings
         return settings
 

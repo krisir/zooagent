@@ -1,6 +1,6 @@
 # ADR-0002 AgentScope 作为 Agent 运行时与 LLM 接入层
 
-- 状态：**已实施**（原「待确认」已解除）
+- 状态：**已实施**；2026-10-21 收敛为「真实 LLM 只有 AgentScope 一条路」（见 ADR-0016）
 - 日期：2026-10-20（更新）
 
 ## 背景
@@ -24,7 +24,7 @@
 选用哪个运行时由模型配置的 `provider` 决定：
 
 - `agentscope` → AgentScope ReAct Agent（推荐，ADR-004 的方向）
-- `openai` / `ollama` → 保留自研轻量运行时（无额外依赖，便于分发与离线环境）
+- ~~`openai` / `ollama` → 保留自研轻量运行时~~ → 已删除，改用 AgentScope（ADR-0016）
 - `offline` / `mock` → 见 ADR-0005 / ADR-0006
 
 工具集合、校验、事务、界面渲染在所有路径上完全一致，因为 AgentScope 调用的就是同一批工具。
