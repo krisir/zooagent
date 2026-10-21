@@ -273,3 +273,7 @@ cd apps/desktop/src-tauri && cargo check
 - [ADR](docs/adr/)
 - [生成质量评测](backend/eval/README.md)
 - [里程碑 M1](docs/milestones/m1.md)
+
+## 许可证
+
+[MIT](LICENSE) © 2026 krisir
